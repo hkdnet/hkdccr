@@ -1,0 +1,7 @@
+[package]
+name = "hkdccr"
+version = "0.1.0"
+authors = ["hkdnet <satoko.itse@gmail.com>"]
+edition = "2018"
+
+[dependencies]
