@@ -20,8 +20,7 @@ try() {
 
 # single value
 try 0 '0'
-
-# try 42 '42;'
+try 42 '42'
 # 
 # # add
 # try 3 '1+2;'
