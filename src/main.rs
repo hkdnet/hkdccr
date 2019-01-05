@@ -44,7 +44,7 @@ fn run(input: &str) -> io::Result<()> {
 fn generate(node: Node) {
     match node.ty {
         NodeType::Number(n) => println!("  push {}", n),
-        NodeType::Plus(lhs, rhs) => {
+        NodeType::Add(lhs, rhs) => {
             generate(*lhs);
             generate(*rhs);
             println!("  pop rdi");
@@ -52,7 +52,7 @@ fn generate(node: Node) {
             println!("  add rax, rdi");
             println!("  push rax");
         }
-        NodeType::Minus(lhs, rhs) => {
+        NodeType::Sub(lhs, rhs) => {
             generate(*lhs);
             generate(*rhs);
             println!("  pop rdi");
@@ -88,11 +88,11 @@ fn parse_expr(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
             if let Ok(rhs) = rhs_opt {
                 let p = if is_plus {
                     Ok(Node {
-                        ty: NodeType::Plus(Box::new(lhs), Box::new(rhs)),
+                        ty: NodeType::Add(Box::new(lhs), Box::new(rhs)),
                     })
                 } else {
                     Ok(Node {
-                        ty: NodeType::Minus(Box::new(lhs), Box::new(rhs)),
+                        ty: NodeType::Sub(Box::new(lhs), Box::new(rhs)),
                     })
                 };
                 return (p, after_tokens);
@@ -146,7 +146,7 @@ fn parse_expr_test() {
 
     let node = res.unwrap();
     match node.ty {
-        NodeType::Plus(box lhs, box rhs) => {
+        NodeType::Add(box lhs, box rhs) => {
             assert!(lhs.ty == NodeType::Number(1));
             assert!(rhs.ty == NodeType::Number(2));
         }
@@ -197,16 +197,16 @@ fn paser_number_test() {
 
 enum NodeType {
     Number(i32),
-    Plus(Box<Node>, Box<Node>),
-    Minus(Box<Node>, Box<Node>),
+    Add(Box<Node>, Box<Node>),
+    Sub(Box<Node>, Box<Node>),
 }
 
 impl fmt::Display for NodeType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             NodeType::Number(n) => write!(f, "Number {}", n),
-            NodeType::Plus(lhs_box, rhs_box) => write!(f, "Plus {} + {}", lhs_box, rhs_box),
-            NodeType::Minus(lhs_box, rhs_box) => write!(f, "Minus {} - {}", lhs_box, rhs_box),
+            NodeType::Add(lhs_box, rhs_box) => write!(f, "Add {} + {}", lhs_box, rhs_box),
+            NodeType::Sub(lhs_box, rhs_box) => write!(f, "Sub {} - {}", lhs_box, rhs_box),
         }
     }
 }
@@ -218,12 +218,12 @@ impl PartialEq for NodeType {
                 NodeType::Number(o) => n == o,
                 _ => false,
             },
-            NodeType::Plus(box l, box r) => match other {
-                NodeType::Plus(box ol, box or) => l == ol && r == or,
+            NodeType::Add(box l, box r) => match other {
+                NodeType::Add(box ol, box or) => l == ol && r == or,
                 _ => false,
             },
-            NodeType::Minus(box l, box r) => match other {
-                NodeType::Minus(box ol, box or) => l == ol && r == or,
+            NodeType::Sub(box l, box r) => match other {
+                NodeType::Sub(box ol, box or) => l == ol && r == or,
                 _ => false,
             },
         }
