@@ -228,6 +228,7 @@ impl fmt::Display for Node {
 enum TokenType {
     Number(i32),
     Plus,
+    Minus,
 }
 
 impl fmt::Display for TokenType {
@@ -235,6 +236,7 @@ impl fmt::Display for TokenType {
         match self {
             TokenType::Number(n) => write!(f, "Number {}", n),
             TokenType::Plus => write!(f, "Plus"),
+            TokenType::Minus => write!(f, "Minus"),
         }
     }
 }
@@ -279,6 +281,14 @@ fn tokenize(input: &str) -> Vec<Token> {
         if char::from(bytes[idx]) == '+' {
             ret.push(Token {
                 ty: TokenType::Plus,
+                text: "+",
+            });
+            idx += 1;
+            continue 'token_loop;
+        }
+        if char::from(bytes[idx]) == '-' {
+            ret.push(Token {
+                ty: TokenType::Minus,
                 text: "+",
             });
             idx += 1;
