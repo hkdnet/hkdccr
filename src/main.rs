@@ -68,6 +68,15 @@ fn generate(node: Node) {
             println!("  mul rdi");
             println!("  push rax");
         }
+        NodeType::Div(lhs, rhs) => {
+            generate(*lhs);
+            generate(*rhs);
+            println!("  pop rdi");
+            println!("  pop rax");
+            println!("  mov rdx, 0");
+            println!("  div rdi");
+            println!("  push rax");
+        }
     }
 }
 
@@ -162,7 +171,7 @@ fn parse_expr_test() {
     }
 }
 
-// mul: number | number "*" mul
+// mul: number | number "*" mul | number "/" mul
 fn parse_mul(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
     let (res, mut num_tokens) = parse_number(tokens);
     if res.is_err() {
@@ -170,13 +179,20 @@ fn parse_mul(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
     }
     if let Some(token) = num_tokens.first() {
         match token.ty {
-            TokenType::Asterisk => {
+            TokenType::Asterisk | TokenType::Slash => {
                 let lhs = res.unwrap();
-                num_tokens.remove(0); // skip "*"
+                let is_mul = token.ty == TokenType::Asterisk;
+                num_tokens.remove(0); // skip "*" or "/"
                 let (rhs_res, mul_tokens) = parse_mul(num_tokens);
                 if let Ok(rhs) = rhs_res {
-                    let node = Node {
-                        ty: NodeType::Multi(box lhs, box rhs),
+                    let node = if is_mul {
+                        Node {
+                            ty: NodeType::Multi(box lhs, box rhs),
+                        }
+                    } else {
+                        Node {
+                            ty: NodeType::Div(box lhs, box rhs),
+                        }
                     };
                     return (Ok(node), mul_tokens);
                 } else {
@@ -235,6 +251,7 @@ enum NodeType {
     Add(Box<Node>, Box<Node>),
     Sub(Box<Node>, Box<Node>),
     Multi(Box<Node>, Box<Node>),
+    Div(Box<Node>, Box<Node>),
 }
 
 impl fmt::Display for NodeType {
@@ -244,6 +261,7 @@ impl fmt::Display for NodeType {
             NodeType::Add(lhs_box, rhs_box) => write!(f, "Add {} + {}", lhs_box, rhs_box),
             NodeType::Sub(lhs_box, rhs_box) => write!(f, "Sub {} - {}", lhs_box, rhs_box),
             NodeType::Multi(lhs_box, rhs_box) => write!(f, "Multi {} * {}", lhs_box, rhs_box),
+            NodeType::Div(lhs_box, rhs_box) => write!(f, "Div {} * {}", lhs_box, rhs_box),
         }
     }
 }
@@ -267,6 +285,10 @@ impl PartialEq for NodeType {
                 NodeType::Multi(box ol, box or) => l == ol && r == or,
                 _ => false,
             },
+            NodeType::Div(box l, box r) => match other {
+                NodeType::Div(box ol, box or) => l == ol && r == or,
+                _ => false,
+            },
         }
     }
 }
@@ -288,6 +310,7 @@ enum TokenType {
     Plus,
     Minus,
     Asterisk,
+    Slash,
 }
 
 impl fmt::Display for TokenType {
@@ -297,6 +320,7 @@ impl fmt::Display for TokenType {
             TokenType::Plus => write!(f, "Plus"),
             TokenType::Minus => write!(f, "Minus"),
             TokenType::Asterisk => write!(f, "Asterisk"),
+            TokenType::Slash => write!(f, "Slash"),
         }
     }
 }
@@ -363,6 +387,14 @@ fn tokenize(input: &str) -> Vec<Token> {
             ret.push(Token {
                 ty: TokenType::Asterisk,
                 text: "*",
+            });
+            idx += 1;
+            continue 'token_loop;
+        }
+        if c == '/' {
+            ret.push(Token {
+                ty: TokenType::Slash,
+                text: "/",
             });
             idx += 1;
             continue 'token_loop;
