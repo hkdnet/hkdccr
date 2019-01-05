@@ -170,7 +170,7 @@ fn parse_mul(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
     }
     if let Some(token) = num_tokens.first() {
         match token.ty {
-            TokenType::Multi => {
+            TokenType::Asterisk => {
                 let lhs = res.unwrap();
                 num_tokens.remove(0); // skip "*"
                 let (rhs_res, mul_tokens) = parse_mul(num_tokens);
@@ -287,7 +287,7 @@ enum TokenType {
     Number(i32),
     Plus,
     Minus,
-    Multi,
+    Asterisk,
 }
 
 impl fmt::Display for TokenType {
@@ -296,7 +296,7 @@ impl fmt::Display for TokenType {
             TokenType::Number(n) => write!(f, "Number {}", n),
             TokenType::Plus => write!(f, "Plus"),
             TokenType::Minus => write!(f, "Minus"),
-            TokenType::Multi => write!(f, "Multi"),
+            TokenType::Asterisk => write!(f, "Asterisk"),
         }
     }
 }
@@ -361,7 +361,7 @@ fn tokenize(input: &str) -> Vec<Token> {
         }
         if c == '*' {
             ret.push(Token {
-                ty: TokenType::Multi,
+                ty: TokenType::Asterisk,
                 text: "*",
             });
             idx += 1;
