@@ -311,7 +311,7 @@ fn tokenize(input: &str) -> Vec<Token> {
         if c == '-' {
             ret.push(Token {
                 ty: TokenType::Minus,
-                text: "+",
+                text: "-",
             });
             idx += 1;
             continue 'token_loop;
