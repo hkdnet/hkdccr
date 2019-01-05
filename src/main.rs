@@ -296,6 +296,10 @@ fn tokenize(input: &str) -> Vec<Token> {
             continue 'token_loop;
         }
         let c = char::from(bytes[idx]);
+        if is_space(c) {
+            idx +=1;
+            continue 'token_loop;
+        }
         if c == '+' {
             ret.push(Token {
                 ty: TokenType::Plus,
@@ -315,6 +319,10 @@ fn tokenize(input: &str) -> Vec<Token> {
         panic!("oops!");
     }
     return ret;
+}
+
+fn is_space(c: char) -> bool {
+    return c == ' ';
 }
 
 fn is_digits(c: char) -> bool {
