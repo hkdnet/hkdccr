@@ -295,7 +295,8 @@ fn tokenize(input: &str) -> Vec<Token> {
             idx = non_digit_idx;
             continue 'token_loop;
         }
-        if char::from(bytes[idx]) == '+' {
+        let c = char::from(bytes[idx]);
+        if c == '+' {
             ret.push(Token {
                 ty: TokenType::Plus,
                 text: "+",
@@ -303,7 +304,7 @@ fn tokenize(input: &str) -> Vec<Token> {
             idx += 1;
             continue 'token_loop;
         }
-        if char::from(bytes[idx]) == '-' {
+        if c == '-' {
             ret.push(Token {
                 ty: TokenType::Minus,
                 text: "+",
