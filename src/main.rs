@@ -246,6 +246,7 @@ enum TokenType {
     Number(i32),
     Plus,
     Minus,
+    Multi,
 }
 
 impl fmt::Display for TokenType {
@@ -254,6 +255,7 @@ impl fmt::Display for TokenType {
             TokenType::Number(n) => write!(f, "Number {}", n),
             TokenType::Plus => write!(f, "Plus"),
             TokenType::Minus => write!(f, "Minus"),
+            TokenType::Multi => write!(f, "Multi"),
         }
     }
 }
@@ -312,6 +314,14 @@ fn tokenize(input: &str) -> Vec<Token> {
             ret.push(Token {
                 ty: TokenType::Minus,
                 text: "-",
+            });
+            idx += 1;
+            continue 'token_loop;
+        }
+        if c == '*' {
+            ret.push(Token {
+                ty: TokenType::Multi,
+                text: "*",
             });
             idx += 1;
             continue 'token_loop;
