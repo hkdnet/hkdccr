@@ -311,6 +311,8 @@ enum TokenType {
     Minus,
     Asterisk,
     Slash,
+    LParen,
+    RParen,
 }
 
 impl fmt::Display for TokenType {
@@ -321,6 +323,8 @@ impl fmt::Display for TokenType {
             TokenType::Minus => write!(f, "Minus"),
             TokenType::Asterisk => write!(f, "Asterisk"),
             TokenType::Slash => write!(f, "Slash"),
+            TokenType::LParen => write!(f, "LParen"),
+            TokenType::RParen => write!(f, "RParen"),
         }
     }
 }
@@ -397,6 +401,22 @@ fn tokenize(input: &str) -> Vec<Token> {
                 text: "/",
             });
             idx += 1;
+            continue 'token_loop;
+        }
+        if c == '(' {
+            ret.push(Token{
+                ty: TokenType::LParen,
+                text: "(",
+            });
+            idx +=1;
+            continue 'token_loop;
+        }
+        if c == ')' {
+            ret.push(Token{
+                ty: TokenType::RParen,
+                text: ")",
+            });
+            idx +=1;
             continue 'token_loop;
         }
         panic!("oops!");
