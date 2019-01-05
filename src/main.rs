@@ -52,6 +52,14 @@ fn generate(node: Node) {
             println!("  add rax, rdi");
             println!("  push rax");
         }
+        NodeType::Minus(lhs, rhs) => {
+            generate(*lhs);
+            generate(*rhs);
+            println!("  pop rdi");
+            println!("  pop rax");
+            println!("  sub rax, rdi");
+            println!("  push rax");
+        }
     }
 }
 
@@ -66,20 +74,27 @@ fn parse(tokens: Vec<Token>) -> Result<Node, &'static str> {
     return node;
 }
 
-// expr: number | number "+" expr
+// expr: number | number "+" expr | number - "expr"
 fn parse_expr(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
     let (lhs_opt, mut plus_tokens) = parse_number(tokens);
     if let Ok(lhs) = lhs_opt {
         if let Some(token) = plus_tokens.first() {
-            if token.ty != TokenType::Plus {
-                return (Err("expect plus but not found"), plus_tokens);
+            if token.ty != TokenType::Plus && token.ty != TokenType::Minus {
+                return (Err("expect plus/minus but not found"), plus_tokens);
             }
-            plus_tokens.remove(0); // skip "+"
+            let is_plus = token.ty == TokenType::Plus;
+            plus_tokens.remove(0); // skip "+" / "-"
             let (rhs_opt, after_tokens) = parse_expr(plus_tokens);
             if let Ok(rhs) = rhs_opt {
-                let p = Ok(Node {
-                    ty: NodeType::Plus(Box::new(lhs), Box::new(rhs)),
-                });
+                let p = if is_plus {
+                    Ok(Node {
+                        ty: NodeType::Plus(Box::new(lhs), Box::new(rhs)),
+                    })
+                } else {
+                    Ok(Node {
+                        ty: NodeType::Minus(Box::new(lhs), Box::new(rhs)),
+                    })
+                };
                 return (p, after_tokens);
             } else {
                 return (Err("after \"+\", it should be number"), after_tokens);
@@ -183,6 +198,7 @@ fn paser_number_test() {
 enum NodeType {
     Number(i32),
     Plus(Box<Node>, Box<Node>),
+    Minus(Box<Node>, Box<Node>),
 }
 
 impl fmt::Display for NodeType {
@@ -190,6 +206,7 @@ impl fmt::Display for NodeType {
         match self {
             NodeType::Number(n) => write!(f, "Number {}", n),
             NodeType::Plus(lhs_box, rhs_box) => write!(f, "Plus {} + {}", lhs_box, rhs_box),
+            NodeType::Minus(lhs_box, rhs_box) => write!(f, "Minus {} - {}", lhs_box, rhs_box),
         }
     }
 }
@@ -197,18 +214,18 @@ impl fmt::Display for NodeType {
 impl PartialEq for NodeType {
     fn eq(&self, other: &NodeType) -> bool {
         match self {
-            NodeType::Number(n) => {
-                match other {
-            NodeType::Number(o) => n == o,
-            _ => false,
-                }
+            NodeType::Number(n) => match other {
+                NodeType::Number(o) => n == o,
+                _ => false,
             },
-            NodeType::Plus(box l, box r) =>{
-                match other {
-            NodeType::Plus( box ol, box or) => l == ol && r == or,
-            _ => false,
-                }
-            } ,
+            NodeType::Plus(box l, box r) => match other {
+                NodeType::Plus(box ol, box or) => l == ol && r == or,
+                _ => false,
+            },
+            NodeType::Minus(box l, box r) => match other {
+                NodeType::Minus(box ol, box or) => l == ol && r == or,
+                _ => false,
+            },
         }
     }
 }
