@@ -74,7 +74,7 @@ fn parse(tokens: Vec<Token>) -> Result<Node, &'static str> {
     return node;
 }
 
-// expr: number | number "+" expr | number - "expr"
+// expr: number | number "+" expr | number "-" expr
 fn parse_expr(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
     let (lhs_opt, mut plus_tokens) = parse_number(tokens);
     if let Ok(lhs) = lhs_opt {
