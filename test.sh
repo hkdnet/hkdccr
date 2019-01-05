@@ -29,10 +29,10 @@ try 13 '1+10+2'
 # sub
 try 2 '3-1'
 try 11 '23-12'
-#
-# # space
-# try 2 '3 - 1;'
-#
+
+# space
+try 2 '3 - 1'
+
 # # multi
 # try 120 '70+2*5*5;'
 # # div
