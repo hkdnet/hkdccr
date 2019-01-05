@@ -1,3 +1,5 @@
+#![feature(box_syntax, box_patterns)]
+
 use std::fmt;
 use std::io;
 
@@ -17,32 +19,227 @@ fn run(input: &str) -> io::Result<()> {
     let tokens = tokenize(input);
 
     // for debug
-    // for token in tokens {
+    // for token in tokens.clone() {
     //     println!("{}", token);
     // }
 
-    println!(".intel_syntax noprefix");
-    println!(".global _main");
-    println!("_main:");
-    let TokenType::Number(n) = tokens[0].ty;
-    println!("  push {}", n);
-    println!("  pop rax");
-    println!("  ret");
-    Ok(())
+    let node_result = parse(tokens);
+    match node_result {
+        Ok(node) => {
+            println!(".intel_syntax noprefix");
+            println!(".global _main");
+            println!("_main:");
+            generate(node);
+            println!("  pop rax");
+            println!("  ret");
+            Ok(())
+        }
+        Err(err) => {
+            eprintln!("err: {}", err);
+            std::process::exit(1);
+        }
+    }
 }
 
+fn generate(node: Node) {
+    match node.ty {
+        NodeType::Number(n) => println!("  push {}", n),
+        NodeType::Plus(lhs, rhs) => {
+            generate(*lhs);
+            generate(*rhs);
+            println!("  pop rdi");
+            println!("  pop rax");
+            println!("  add rax, rdi");
+            println!("  push rax");
+        }
+    }
+}
+
+fn parse(tokens: Vec<Token>) -> Result<Node, &'static str> {
+    let (node, tokens) = parse_expr(tokens);
+    if node.is_err() {
+        return node;
+    }
+    if tokens.len() != 0 {
+        return Err("tokens are not fully consumed");
+    }
+    return node;
+}
+
+// expr: number | number "+" expr
+fn parse_expr(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
+    let (lhs_opt, mut plus_tokens) = parse_number(tokens);
+    if let Ok(lhs) = lhs_opt {
+        if let Some(token) = plus_tokens.first() {
+            if token.ty != TokenType::Plus {
+                return (Err("expect plus but not found"), plus_tokens);
+            }
+            plus_tokens.remove(0); // skip "+"
+            let (rhs_opt, after_tokens) = parse_expr(plus_tokens);
+            if let Ok(rhs) = rhs_opt {
+                let p = Ok(Node {
+                    ty: NodeType::Plus(Box::new(lhs), Box::new(rhs)),
+                });
+                return (p, after_tokens);
+            } else {
+                return (Err("after \"+\", it should be number"), after_tokens);
+            }
+        } else {
+            return (Ok(lhs), plus_tokens);
+        }
+    } else {
+        return (Err("lhs is not a expr"), plus_tokens);
+    }
+}
+
+#[test]
+fn parse_expr_test() {
+    let tokens = vec![Token {
+        ty: TokenType::Number(1),
+        text: "1",
+    }];
+
+    let (res, next_tokens) = parse_expr(tokens);
+    assert_eq!(0, next_tokens.len());
+    assert!(res.is_ok());
+
+    let node = res.unwrap();
+    match node.ty {
+        NodeType::Number(num) => {
+            assert_eq!(1, num);
+        }
+        _ => assert!(false),
+    }
+    let tokens = vec![
+        Token {
+            ty: TokenType::Number(1),
+            text: "1",
+        },
+        Token {
+            ty: TokenType::Plus,
+            text: "+",
+        },
+        Token {
+            ty: TokenType::Number(2),
+            text: "2",
+        },
+    ];
+
+    let (res, next_tokens) = parse_expr(tokens);
+    assert_eq!(0, next_tokens.len());
+    assert!(res.is_ok());
+
+    let node = res.unwrap();
+    match node.ty {
+        NodeType::Plus(box lhs, box rhs) => {
+            assert!(lhs.ty == NodeType::Number(1));
+            assert!(rhs.ty == NodeType::Number(2));
+        }
+        _ => assert!(false),
+    }
+}
+
+fn parse_number(mut tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
+    if let Some(token) = tokens.first() {
+        if let TokenType::Number(n) = token.ty {
+            tokens.remove(0);
+            return (
+                Ok(Node {
+                    ty: NodeType::Number(n),
+                }),
+                tokens,
+            );
+        }
+    }
+    return (Err("not a number"), tokens);
+}
+
+#[test]
+fn paser_number_test() {
+    let tokens = vec![Token {
+        ty: TokenType::Number(123),
+        text: "123",
+    }];
+    let (res, after_token) = parse_number(tokens);
+    assert!(res.is_ok());
+    assert_eq!(0, after_token.len());
+    let node = res.unwrap();
+    match node.ty {
+        NodeType::Number(num) => {
+            assert_eq!(123, num);
+        }
+        _ => assert!(false),
+    }
+
+    let tokens = vec![Token {
+        ty: TokenType::Plus,
+        text: "+",
+    }];
+    let (res, after_token) = parse_number(tokens);
+    assert_eq!(1, after_token.len());
+    assert!(res.is_err());
+}
+
+enum NodeType {
+    Number(i32),
+    Plus(Box<Node>, Box<Node>),
+}
+
+impl fmt::Display for NodeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            NodeType::Number(n) => write!(f, "Number {}", n),
+            NodeType::Plus(lhs_box, rhs_box) => write!(f, "Plus {} + {}", lhs_box, rhs_box),
+        }
+    }
+}
+
+impl PartialEq for NodeType {
+    fn eq(&self, other: &NodeType) -> bool {
+        match self {
+            NodeType::Number(n) => {
+                match other {
+            NodeType::Number(o) => n == o,
+            _ => false,
+                }
+            },
+            NodeType::Plus(box l, box r) =>{
+                match other {
+            NodeType::Plus( box ol, box or) => l == ol && r == or,
+            _ => false,
+                }
+            } ,
+        }
+    }
+}
+
+#[derive(PartialEq)]
+struct Node {
+    ty: NodeType,
+}
+
+impl fmt::Display for Node {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "(type = {})", self.ty)
+    }
+}
+
+#[derive(PartialEq, Clone)]
 enum TokenType {
     Number(i32),
+    Plus,
 }
 
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             TokenType::Number(n) => write!(f, "Number {}", n),
+            TokenType::Plus => write!(f, "Plus"),
         }
     }
 }
 
+#[derive(Clone)]
 struct Token<'a> {
     ty: TokenType,
     text: &'a str,
@@ -77,6 +274,14 @@ fn tokenize(input: &str) -> Vec<Token> {
                 text: text,
             });
             idx = non_digit_idx;
+            continue 'token_loop;
+        }
+        if char::from(bytes[idx]) == '+' {
+            ret.push(Token {
+                ty: TokenType::Plus,
+                text: "+",
+            });
+            idx += 1;
             continue 'token_loop;
         }
         panic!("oops!");
