@@ -60,6 +60,14 @@ fn generate(node: Node) {
             println!("  sub rax, rdi");
             println!("  push rax");
         }
+        NodeType::Multi(lhs, rhs) => {
+            generate(*lhs);
+            generate(*rhs);
+            println!("  pop rdi");
+            println!("  pop rax");
+            println!("  mul rdi");
+            println!("  push rax");
+        }
     }
 }
 
@@ -74,9 +82,9 @@ fn parse(tokens: Vec<Token>) -> Result<Node, &'static str> {
     return node;
 }
 
-// expr: number | number "+" expr | number "-" expr
+// expr: mul | mul "+" expr | mul "-" expr
 fn parse_expr(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
-    let (lhs_opt, mut plus_tokens) = parse_number(tokens);
+    let (lhs_opt, mut plus_tokens) = parse_mul(tokens);
     if let Ok(lhs) = lhs_opt {
         if let Some(token) = plus_tokens.first() {
             if token.ty != TokenType::Plus && token.ty != TokenType::Minus {
@@ -154,6 +162,33 @@ fn parse_expr_test() {
     }
 }
 
+// mul: number | number "*" mul
+fn parse_mul(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
+    let (res, mut num_tokens) = parse_number(tokens);
+    if res.is_err() {
+        return (Err("no number"), num_tokens);
+    }
+    if let Some(token) = num_tokens.first() {
+        match token.ty {
+            TokenType::Multi => {
+                let lhs = res.unwrap();
+                num_tokens.remove(0); // skip "*"
+                let (rhs_res, mul_tokens) = parse_mul(num_tokens);
+                if let Ok(rhs) = rhs_res {
+                    let node = Node {
+                        ty: NodeType::Multi(box lhs, box rhs),
+                    };
+                    return (Ok(node), mul_tokens);
+                } else {
+                    return (Err("there should be a mul after *"), mul_tokens);
+                }
+            }
+            _ => (),
+        }
+    }
+    return (res, num_tokens);
+}
+
 fn parse_number(mut tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
     if let Some(token) = tokens.first() {
         if let TokenType::Number(n) = token.ty {
@@ -199,6 +234,7 @@ enum NodeType {
     Number(i32),
     Add(Box<Node>, Box<Node>),
     Sub(Box<Node>, Box<Node>),
+    Multi(Box<Node>, Box<Node>),
 }
 
 impl fmt::Display for NodeType {
@@ -207,6 +243,7 @@ impl fmt::Display for NodeType {
             NodeType::Number(n) => write!(f, "Number {}", n),
             NodeType::Add(lhs_box, rhs_box) => write!(f, "Add {} + {}", lhs_box, rhs_box),
             NodeType::Sub(lhs_box, rhs_box) => write!(f, "Sub {} - {}", lhs_box, rhs_box),
+            NodeType::Multi(lhs_box, rhs_box) => write!(f, "Multi {} * {}", lhs_box, rhs_box),
         }
     }
 }
@@ -224,6 +261,10 @@ impl PartialEq for NodeType {
             },
             NodeType::Sub(box l, box r) => match other {
                 NodeType::Sub(box ol, box or) => l == ol && r == or,
+                _ => false,
+            },
+            NodeType::Multi(box l, box r) => match other {
+                NodeType::Multi(box ol, box or) => l == ol && r == or,
                 _ => false,
             },
         }
@@ -299,7 +340,7 @@ fn tokenize(input: &str) -> Vec<Token> {
         }
         let c = char::from(bytes[idx]);
         if is_space(c) {
-            idx +=1;
+            idx += 1;
             continue 'token_loop;
         }
         if c == '+' {
