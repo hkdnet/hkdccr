@@ -91,8 +91,24 @@ fn parse(tokens: Vec<Token>) -> Result<Node, &'static str> {
     return node;
 }
 
-// expr: mul | mul "+" expr | mul "-" expr
-fn parse_expr(tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
+// expr: mul | mul "+" expr | mul "-" expr | "(" expr ")"
+fn parse_expr(mut tokens: Vec<Token>) -> (Result<Node, &'static str>, Vec<Token>) {
+    if let Some(token) = tokens.first() {
+        if token.ty == TokenType::LParen {
+            tokens.remove(0); // skip "("
+            let (res, mut expr_tokens) = parse_expr(tokens);
+            if res.is_err() {
+                return (res, expr_tokens);
+            }
+            if let Some(token) = expr_tokens.first() {
+                if token.ty == TokenType::RParen {
+                    expr_tokens.remove(0); // skip ")"
+                    return (res, expr_tokens);
+                }
+            }
+            return (Err("mismatch paren"), expr_tokens);
+        }
+    }
     let (lhs_opt, mut plus_tokens) = parse_mul(tokens);
     if let Ok(lhs) = lhs_opt {
         if let Some(token) = plus_tokens.first() {
@@ -404,19 +420,19 @@ fn tokenize(input: &str) -> Vec<Token> {
             continue 'token_loop;
         }
         if c == '(' {
-            ret.push(Token{
+            ret.push(Token {
                 ty: TokenType::LParen,
                 text: "(",
             });
-            idx +=1;
+            idx += 1;
             continue 'token_loop;
         }
         if c == ')' {
-            ret.push(Token{
+            ret.push(Token {
                 ty: TokenType::RParen,
                 text: ")",
             });
-            idx +=1;
+            idx += 1;
             continue 'token_loop;
         }
         panic!("oops!");
