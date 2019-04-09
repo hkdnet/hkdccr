@@ -1,4 +1,5 @@
-#![feature(box_syntax, box_patterns)]
+#![feature(box_syntax)]
+#![feature(box_patterns)]
 
 use std::fmt;
 use std::io;
